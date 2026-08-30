@@ -763,28 +763,32 @@ function syncSettings() {
 
 function syncTimerInputs() {
 
-  const total =
-    Math.max(
-      0,
-      Number(
-        game.timerDuration ??
-        600
-      )
-    );
+  const activeElement = document.activeElement;
 
+  // אם אתה כרגע עורך את הדקות או השניות,
+  // לא מחזירים את הערך הישן מ-Firebase
+  if (
+    activeElement === $('timerMinutes') ||
+    activeElement === $('timerSeconds')
+  ) {
+    return;
+  }
+
+  const total = Math.max(
+    0,
+    Number(
+      game.timerRemaining ??
+      game.timerDuration ??
+      600
+    )
+  );
 
   $('timerMinutes').value =
-    Math.floor(
-      total /
-      60
-    );
-
+    Math.floor(total / 60);
 
   $('timerSeconds').value =
-    total %
-    60;
+    total % 60;
 }
-
 
 function syncTeamSelectors() {
 
@@ -1337,89 +1341,91 @@ async function finishTimer() {
 
 // START TIMER
 
-$('timerStartBtn').onclick =
-  async () => {
+// START TIMER
 
-    let remaining =
-      timerSecondsLeft();
+$('timerStartBtn').onclick = async () => {
 
-
-    if (
-      remaining <= 0
-    ) {
-
-      const minutes =
-        clamp(
-          $('timerMinutes').value,
-          0,
-          180
-        );
-
-
-      const seconds =
-        clamp(
-          $('timerSeconds').value,
-          0,
-          59
-        );
-
-
-      remaining =
-        minutes *
-        60 +
-        seconds;
-    }
-
-
-    if (
-      remaining <= 0
-    ) {
-
-      $('timerMsg').textContent =
-        'יש להגדיר זמן גדול מ־0.';
-
-      return;
-    }
-
-
-    const endAt =
-      Date.now() +
-      remaining *
-      1000;
-
-
-    await setDoc(
-      gameRef,
-      {
-        timerDuration:
-          Math.max(
-            remaining,
-            Number(
-              game.timerDuration
-            ) ||
-            remaining
-          ),
-
-        timerRemaining:
-          remaining,
-
-        timerRunning:
-          true,
-
-        timerEndAt:
-          endAt
-      },
-      {
-        merge:
-          true
-      }
+  const minutes =
+    Number(
+      $('timerMinutes').value
     );
 
+  const seconds =
+    Number(
+      $('timerSeconds').value
+    );
 
+  const enteredTotal =
+    (Number.isFinite(minutes) ? minutes : 0) * 60 +
+    (Number.isFinite(seconds) ? seconds : 0);
+
+  let remaining;
+
+  // אם השעון לא רץ כרגע,
+  // הזמן שהקלדת הוא הזמן שממנו מתחילים
+  if (
+    !game.timerRunning &&
+    enteredTotal > 0
+  ) {
+    remaining =
+      enteredTotal;
+  } else {
+    remaining =
+      timerSecondsLeft();
+  }
+
+  if (
+    remaining <= 0
+  ) {
     $('timerMsg').textContent =
-      'השעון הופעל.';
-  };
+      'יש להגדיר זמן גדול מ־0.';
+    return;
+  }
 
+  const endAt =
+    Date.now() +
+    remaining * 1000;
+
+  // עדכון מקומי מיד
+  game.timerDuration =
+    remaining;
+
+  game.timerRemaining =
+    remaining;
+
+  game.timerRunning =
+    true;
+
+  game.timerEndAt =
+    endAt;
+
+  renderTimer();
+
+  // שמירה ב-Firebase
+  await setDoc(
+    gameRef,
+    {
+      timerDuration:
+        remaining,
+
+      timerRemaining:
+        remaining,
+
+      timerRunning:
+        true,
+
+      timerEndAt:
+        endAt
+    },
+    {
+      merge:
+        true
+    }
+  );
+
+  $('timerMsg').textContent =
+    `השעון הופעל על ${formatTimer(remaining)}.`;
+};
 
 // PAUSE TIMER
 
@@ -1462,52 +1468,83 @@ $('timerPauseBtn').onclick =
 
 // RESET / APPLY TIMER
 
+// RESET / APPLY TIMER
+
 $('timerResetBtn').onclick = async () => {
 
-  const minutes = clamp(
-    $('timerMinutes').value,
-    0,
-    180
-  );
+  const minutes =
+    Number(
+      $('timerMinutes').value
+    );
 
-  const seconds = clamp(
-    $('timerSeconds').value,
-    0,
-    59
-  );
+  const seconds =
+    Number(
+      $('timerSeconds').value
+    );
 
   const total =
-    minutes * 60 +
-    seconds;
+    (Number.isFinite(minutes) ? minutes : 0) * 60 +
+    (Number.isFinite(seconds) ? seconds : 0);
 
-  if (total <= 0) {
+  if (
+    total <= 0
+  ) {
     $('timerMsg').textContent =
       'יש להגדיר זמן גדול מ־0.';
     return;
   }
 
+  // עדכון מקומי
+  game.timerDuration =
+    total;
+
+  game.timerRemaining =
+    total;
+
+  game.timerRunning =
+    false;
+
+  game.timerEndAt =
+    null;
+
+  $('timerDisplay').textContent =
+    formatTimer(total);
+
+  // שמירה ב-Firebase
   await setDoc(
     gameRef,
     {
-      timerDuration: total,
-      timerRemaining: total,
-      timerRunning: false,
-      timerEndAt: null
+      timerDuration:
+        total,
+
+      timerRemaining:
+        total,
+
+      timerRunning:
+        false,
+
+      timerEndAt:
+        null
     },
     {
-      merge: true
+      merge:
+        true
     }
   );
 
-  game.timerDuration = total;
-  game.timerRemaining = total;
-  game.timerRunning = false;
-  game.timerEndAt = null;
+  $('timerMinutes').value =
+    Math.floor(
+      total / 60
+    );
 
-  renderTimer();
+  $('timerSeconds').value =
+    total % 60;
+
+  $('timerDisplay').textContent =
+    formatTimer(total);
 
   $('timerMsg').textContent =
-    `הזמן עודכן ל־${formatTimer(total)} ✅`;
+    `הזמן הוגדר ל־${formatTimer(total)} ✅`;
 };
 
 // ======================================================
