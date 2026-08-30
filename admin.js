@@ -98,7 +98,15 @@ function normalizeEmail(value) {
 
 
 function teamLabel(team) {
-  return `קבוצה ${team}`;
+
+  const teamNames = {
+    1: 'הירוקים',
+    2: 'האדומים',
+    3: 'הכחולים',
+    4: 'הלבנים'
+  };
+
+  return teamNames[team] || `קבוצה ${team}`;
 }
 
 
