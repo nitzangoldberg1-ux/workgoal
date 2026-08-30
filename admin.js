@@ -47,23 +47,78 @@ onAuthStateChanged(auth, user => {
   }
 });
 
-onSnapshot(gameRef, snap => {
-  if (snap.exists()) game = { ...game, ...snap.data() };
-  else setDoc(gameRef, game);
-  syncSettings();
-  renderAll();
-});
+let unsubscribeGame = null;
+let unsubscribePlayers = null;
+let unsubscribeEvents = null;
 
-onSnapshot(collection(db, 'games', GAME, 'players'), snap => {
-  players = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  renderAll();
-});
+function stopAdminListeners() {
+  if (unsubscribeGame) unsubscribeGame();
+  if (unsubscribePlayers) unsubscribePlayers();
+  if (unsubscribeEvents) unsubscribeEvents();
 
-onSnapshot(collection(db, 'games', GAME, 'events'), snap => {
-  events = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => Number(a.createdAtMs || 0) - Number(b.createdAtMs || 0));
-  renderGoalEvents();
-});
+  unsubscribeGame = null;
+  unsubscribePlayers = null;
+  unsubscribeEvents = null;
+}
+
+function startAdminListeners() {
+  stopAdminListeners();
+
+  unsubscribeGame = onSnapshot(
+    gameRef,
+    async snap => {
+      if (snap.exists()) {
+        game = { ...game, ...snap.data() };
+      } else {
+        await setDoc(gameRef, game);
+      }
+
+      syncSettings();
+      renderAll();
+    },
+    error => {
+      console.error("Game listener error:", error);
+      $('settingsMsg').textContent =
+        'אין הרשאה לקרוא את נתוני המשחק.';
+    }
+  );
+
+  unsubscribePlayers = onSnapshot(
+    collection(db, 'games', GAME, 'players'),
+    snap => {
+      players = snap.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      }));
+
+      renderAll();
+    },
+    error => {
+      console.error("Players listener error:", error);
+    }
+  );
+
+  unsubscribeEvents = onSnapshot(
+    collection(db, 'games', GAME, 'events'),
+    snap => {
+      events = snap.docs
+        .map(d => ({
+          id: d.id,
+          ...d.data()
+        }))
+        .sort(
+          (a, b) =>
+            Number(a.createdAtMs || 0) -
+            Number(b.createdAtMs || 0)
+        );
+
+      renderGoalEvents();
+    },
+    error => {
+      console.error("Events listener error:", error);
+    }
+  );
+}
 
 function teamLabel(team) { return `קבוצה ${team}`; }
 function currentScore(team) { return Number(game.scores?.[String(team)] ?? game.scores?.[team] ?? 0); }
