@@ -27,14 +27,12 @@ import {
 } from './firebase-config.js';
 
 
-// ======================================================
-// INITIALIZATION
-// ======================================================
-
 const $ = id => document.getElementById(id);
 
 const app = initializeApp(firebaseConfig);
+
 const auth = getAuth(app);
+
 const db = getFirestore(app);
 
 const GAME = 'current';
@@ -46,22 +44,28 @@ const gameRef = doc(
 );
 
 
-// ======================================================
-// DEFAULT GAME STATE
-// ======================================================
+// =========================
+// GAME STATE
+// =========================
 
 let game = {
+
   teamCount: 4,
+
   playersPerTeam: 5,
 
   status: 'registration',
 
   timerDuration: 600,
+
   timerRemaining: 600,
+
   timerRunning: false,
+
   timerEndAt: null,
 
   activeHomeTeam: 1,
+
   activeAwayTeam: 2,
 
   scores: {
@@ -70,171 +74,27 @@ let game = {
     3: 0,
     4: 0
   }
+
 };
 
 
 let players = [];
+
 let events = [];
 
 let timerInterval = null;
 
+
 let unsubscribeGame = null;
+
 let unsubscribePlayers = null;
+
 let unsubscribeEvents = null;
 
 
-// ======================================================
-// HELPERS
-// ======================================================
-
-function normalizeEmail(value) {
-  return String(value || '')
-    .trim()
-    .toLowerCase();
-}
-
-
-function teamLabel(team) {
-  return `קבוצה ${team}`;
-}
-
-
-function clamp(value, min, max) {
-  value = Number(value);
-
-  if (!Number.isFinite(value)) {
-    return min;
-  }
-
-  return Math.min(
-    max,
-    Math.max(
-      min,
-      value
-    )
-  );
-}
-
-
-function currentScore(team) {
-  return Number(
-    game.scores?.[String(team)] ??
-    game.scores?.[team] ??
-    0
-  );
-}
-
-
-function formatTimer(totalSeconds) {
-
-  const total =
-    Math.max(
-      0,
-      Math.floor(
-        Number(totalSeconds) || 0
-      )
-    );
-
-  const minutes =
-    String(
-      Math.floor(total / 60)
-    ).padStart(
-      2,
-      '0'
-    );
-
-  const seconds =
-    String(
-      total % 60
-    ).padStart(
-      2,
-      '0'
-    );
-
-  return `${minutes}:${seconds}`;
-}
-
-
-function timerSecondsLeft() {
-
-  if (
-    game.timerRunning &&
-    game.timerEndAt
-  ) {
-
-    return Math.max(
-      0,
-      Math.ceil(
-        (
-          Number(game.timerEndAt) -
-          Date.now()
-        ) / 1000
-      )
-    );
-  }
-
-  return Math.max(
-    0,
-    Number(
-      game.timerRemaining ??
-      game.timerDuration ??
-      0
-    )
-  );
-}
-
-
-function shuffled(array) {
-
-  const copy = [...array];
-
-  for (
-    let i = copy.length - 1;
-    i > 0;
-    i--
-  ) {
-
-    const j =
-      Math.floor(
-        Math.random() *
-        (i + 1)
-      );
-
-    [
-      copy[i],
-      copy[j]
-    ] =
-    [
-      copy[j],
-      copy[i]
-    ];
-  }
-
-  return copy;
-}
-
-
-function escapeHtml(value) {
-
-  return String(
-    value ?? ''
-  ).replace(
-    /[&<>'"]/g,
-    character =>
-      ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        "'": '&#39;',
-        '"': '&quot;'
-      })[character]
-  );
-}
-
-
-// ======================================================
+// =========================
 // FIRESTORE LISTENERS
-// ======================================================
+// =========================
 
 function stopAdminListeners() {
 
@@ -251,7 +111,9 @@ function stopAdminListeners() {
   }
 
   unsubscribeGame = null;
+
   unsubscribePlayers = null;
+
   unsubscribeEvents = null;
 }
 
@@ -261,19 +123,19 @@ function startAdminListeners() {
   stopAdminListeners();
 
 
-  // GAME LISTENER
+  // GAME
 
   unsubscribeGame = onSnapshot(
 
     gameRef,
 
-    async snapshot => {
+    async snap => {
 
-      if (snapshot.exists()) {
+      if (snap.exists()) {
 
         game = {
           ...game,
-          ...snapshot.data()
+          ...snap.data()
         };
 
       } else {
@@ -282,9 +144,11 @@ function startAdminListeners() {
           gameRef,
           game
         );
+
       }
 
       syncSettings();
+
       renderAll();
     },
 
@@ -299,12 +163,14 @@ function startAdminListeners() {
 
         $('settingsMsg').textContent =
           'אין הרשאה לקרוא את נתוני המשחק.';
+
       }
+
     }
   );
 
 
-  // PLAYERS LISTENER
+  // PLAYERS
 
   unsubscribePlayers = onSnapshot(
 
@@ -315,13 +181,13 @@ function startAdminListeners() {
       'players'
     ),
 
-    snapshot => {
+    snap => {
 
       players =
-        snapshot.docs.map(
-          item => ({
-            id: item.id,
-            ...item.data()
+        snap.docs.map(
+          d => ({
+            id: d.id,
+            ...d.data()
           })
         );
 
@@ -334,11 +200,12 @@ function startAdminListeners() {
         'Players listener error:',
         error
       );
+
     }
   );
 
 
-  // EVENTS LISTENER
+  // EVENTS
 
   unsubscribeEvents = onSnapshot(
 
@@ -349,20 +216,24 @@ function startAdminListeners() {
       'events'
     ),
 
-    snapshot => {
+    snap => {
 
       events =
-        snapshot.docs
+        snap.docs
           .map(
-            item => ({
-              id: item.id,
-              ...item.data()
+            d => ({
+              id: d.id,
+              ...d.data()
             })
           )
           .sort(
             (a, b) =>
-              Number(a.createdAtMs || 0) -
-              Number(b.createdAtMs || 0)
+              Number(
+                a.createdAtMs || 0
+              ) -
+              Number(
+                b.createdAtMs || 0
+              )
           );
 
       renderGoalEvents();
@@ -374,177 +245,168 @@ function startAdminListeners() {
         'Events listener error:',
         error
       );
+
     }
   );
 }
 
 
-// ======================================================
+// =========================
 // ADMIN LOGIN
-// ======================================================
+// =========================
 
-async function loginAdmin() {
+$('loginBtn').addEventListener(
+  'click',
+  async () => {
 
-  const email =
-    $('email').value.trim();
+    const email =
+      $('email').value.trim();
 
-  const password =
-    $('password').value;
-
-
-  if (!email) {
-
-    $('loginMsg').textContent =
-      'יש להזין כתובת אימייל.';
-
-    return;
-  }
+    const password =
+      $('password').value;
 
 
-  if (!password) {
-
-    $('loginMsg').textContent =
-      'יש להזין סיסמה.';
-
-    return;
-  }
-
-
-  $('loginMsg').textContent =
-    'מתחבר...';
-
-
-  try {
-
-    const result =
-      await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-
-
-    const loggedEmail =
-      normalizeEmail(
-        result.user.email
-      );
-
-
-    const allowedEmail =
-      normalizeEmail(
-        ADMIN_EMAIL
-      );
-
-
-    console.log(
-      'Logged admin:',
-      loggedEmail
-    );
-
-
-    if (
-      loggedEmail !==
-      allowedEmail
-    ) {
-
-      await signOut(auth);
+    if (!email) {
 
       $('loginMsg').textContent =
-        'החשבון הזה אינו מורשה כמנהל.';
+        'יש להזין כתובת אימייל.';
+
+      return;
+    }
+
+
+    if (!password) {
+
+      $('loginMsg').textContent =
+        'יש להזין סיסמה.';
 
       return;
     }
 
 
     $('loginMsg').textContent =
-      '';
-
-  } catch (error) {
-
-    console.error(
-      'Admin login error:',
-      error
-    );
+      'מתחבר...';
 
 
-    switch (error.code) {
+    try {
 
-      case 'auth/invalid-credential':
-
-        $('loginMsg').textContent =
-          'האימייל או הסיסמה שגויים.';
-
-        break;
-
-
-      case 'auth/user-not-found':
-
-        $('loginMsg').textContent =
-          'לא נמצא משתמש עם האימייל הזה.';
-
-        break;
+      const result =
+        await signInWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
 
 
-      case 'auth/wrong-password':
-
-        $('loginMsg').textContent =
-          'הסיסמה שגויה.';
-
-        break;
+      const loggedEmail =
+        (result.user.email || '')
+          .trim()
+          .toLowerCase();
 
 
-      case 'auth/operation-not-allowed':
+      const allowedEmail =
+        (ADMIN_EMAIL || '')
+          .trim()
+          .toLowerCase();
+
+
+      if (
+        loggedEmail !==
+        allowedEmail
+      ) {
+
+        await signOut(auth);
 
         $('loginMsg').textContent =
-          'Email/Password לא מופעל ב-Firebase.';
+          'החשבון הזה אינו מורשה כמנהל.';
 
-        break;
-
-
-      case 'auth/too-many-requests':
-
-        $('loginMsg').textContent =
-          'יותר מדי ניסיונות התחברות. נסה שוב בעוד מספר דקות.';
-
-        break;
+        return;
+      }
 
 
-      default:
+      $('loginMsg').textContent = '';
 
-        $('loginMsg').textContent =
-          `שגיאת התחברות: ${
-            error.code ||
-            error.message
-          }`;
+    } catch (error) {
+
+      console.error(
+        'Admin login error:',
+        error
+      );
+
+
+      switch (error.code) {
+
+        case 'auth/invalid-credential':
+
+          $('loginMsg').textContent =
+            'האימייל או הסיסמה שגויים.';
+
+          break;
+
+
+        case 'auth/user-not-found':
+
+          $('loginMsg').textContent =
+            'לא נמצא משתמש עם האימייל הזה.';
+
+          break;
+
+
+        case 'auth/wrong-password':
+
+          $('loginMsg').textContent =
+            'הסיסמה שגויה.';
+
+          break;
+
+
+        case 'auth/operation-not-allowed':
+
+          $('loginMsg').textContent =
+            'Email/Password לא מופעל ב-Firebase Authentication.';
+
+          break;
+
+
+        case 'auth/too-many-requests':
+
+          $('loginMsg').textContent =
+            'יותר מדי ניסיונות התחברות. נסה שוב מאוחר יותר.';
+
+          break;
+
+
+        default:
+
+          $('loginMsg').textContent =
+            'שגיאת התחברות: ' +
+            (
+              error.code ||
+              error.message
+            );
+
+      }
     }
   }
-}
-
-
-$('loginBtn').addEventListener(
-  'click',
-  loginAdmin
 );
 
+
+// ENTER ON PASSWORD
 
 $('password').addEventListener(
   'keydown',
   event => {
 
-    if (
-      event.key ===
-      'Enter'
-    ) {
+    if (event.key === 'Enter') {
 
-      loginAdmin();
+      $('loginBtn').click();
+
     }
   }
 );
 
 
-// ======================================================
 // LOGOUT
-// ======================================================
 
 $('logoutBtn').addEventListener(
   'click',
@@ -553,42 +415,28 @@ $('logoutBtn').addEventListener(
     stopAdminListeners();
 
     await signOut(auth);
+
   }
 );
 
 
-// ======================================================
 // AUTH STATE
-// ======================================================
 
 onAuthStateChanged(
   auth,
   async user => {
 
-    const loggedEmail =
-      normalizeEmail(
-        user?.email
-      );
-
-
-    const allowedEmail =
-      normalizeEmail(
-        ADMIN_EMAIL
-      );
-
-
     const isAdmin =
-      !!user &&
-      !!loggedEmail &&
-      loggedEmail ===
-        allowedEmail;
+      !!user?.email &&
+      user.email.trim().toLowerCase() ===
+        (ADMIN_EMAIL || '').trim().toLowerCase();
 
 
     $('loginCard')
       .classList
       .toggle(
         'hidden',
-        isAdmin
+        !!isAdmin
       );
 
 
@@ -631,14 +479,154 @@ onAuthStateChanged(
         'החשבון הזה אינו מורשה כמנהל.';
 
       await signOut(auth);
+
     }
   }
 );
 
 
-// ======================================================
+// =========================
+// HELPERS
+// =========================
+
+function teamLabel(team) {
+
+  return `קבוצה ${team}`;
+}
+
+
+function currentScore(team) {
+
+  return Number(
+    game.scores?.[String(team)] ??
+    game.scores?.[team] ??
+    0
+  );
+}
+
+
+function clamp(
+  value,
+  min,
+  max
+) {
+
+  value =
+    Number(value);
+
+  return Number.isFinite(value)
+    ? Math.min(
+        max,
+        Math.max(
+          min,
+          value
+        )
+      )
+    : min;
+}
+
+
+function formatTimer(total) {
+
+  total =
+    Math.max(
+      0,
+      Math.floor(
+        Number(total) || 0
+      )
+    );
+
+  const minutes =
+    String(
+      Math.floor(
+        total / 60
+      )
+    ).padStart(
+      2,
+      '0'
+    );
+
+  const seconds =
+    String(
+      total % 60
+    ).padStart(
+      2,
+      '0'
+    );
+
+  return `${minutes}:${seconds}`;
+}
+
+
+function timerSecondsLeft() {
+
+  if (
+    game.timerRunning &&
+    game.timerEndAt
+  ) {
+
+    return Math.max(
+      0,
+      Math.ceil(
+        (
+          Number(
+            game.timerEndAt
+          ) -
+          Date.now()
+        ) /
+        1000
+      )
+    );
+  }
+
+  return Math.max(
+    0,
+    Number(
+      game.timerRemaining ??
+      game.timerDuration ??
+      0
+    )
+  );
+}
+
+
+function shuffled(array) {
+
+  array =
+    [...array];
+
+  for (
+    let i =
+      array.length - 1;
+    i > 0;
+    i--
+  ) {
+
+    const j =
+      Math.floor(
+        Math.random() *
+        (
+          i + 1
+        )
+      );
+
+    [
+      array[i],
+      array[j]
+    ] =
+    [
+      array[j],
+      array[i]
+    ];
+  }
+
+  return array;
+}
+
+
+// =========================
 // SETTINGS
-// ======================================================
+// =========================
 
 function syncSettings() {
 
@@ -647,19 +635,17 @@ function syncSettings() {
       game.teamCount || 4
     );
 
-
   $('playersPerTeam').value =
     String(
       game.playersPerTeam || 5
     );
 
-
   $('gameStatus').value =
     game.status ||
     'registration';
 
-
   syncTimerInputs();
+
   syncTeamSelectors();
 }
 
@@ -675,12 +661,10 @@ function syncTimerInputs() {
       )
     );
 
-
   $('timerMinutes').value =
     Math.floor(
       total / 60
     );
-
 
   $('timerSeconds').value =
     total % 60;
@@ -689,7 +673,7 @@ function syncTimerInputs() {
 
 function syncTeamSelectors() {
 
-  const teamCount =
+  const n =
     Number(
       game.teamCount ||
       4
@@ -697,23 +681,20 @@ function syncTeamSelectors() {
 
 
   const options =
-    Array.from(
-      {
-        length:
-          teamCount
-      },
-      (_, index) => {
-
-        const team =
-          index + 1;
-
-        return `
-          <option value="${team}">
-            ${teamLabel(team)}
-          </option>
-        `;
-      }
-    ).join('');
+    Array
+      .from(
+        {
+          length: n
+        },
+        (
+          _,
+          index
+        ) =>
+          `<option value="${index + 1}">
+            ${teamLabel(index + 1)}
+          </option>`
+      )
+      .join('');
 
 
   [
@@ -725,33 +706,33 @@ function syncTeamSelectors() {
       const select =
         $(id);
 
-      const oldValue =
+      const old =
         select.value;
 
       select.innerHTML =
         options;
 
-
       if (
-        oldValue &&
-        Number(oldValue) <=
-          teamCount
+        old &&
+        Number(old) <= n
       ) {
 
         select.value =
-          oldValue;
+          old;
       }
     }
   );
 
 
-  const home =
-    Math.min(
-      Number(
-        game.activeHomeTeam ||
-        1
-      ),
-      teamCount
+  $('homeTeam').value =
+    String(
+      Math.min(
+        Number(
+          game.activeHomeTeam ||
+          1
+        ),
+        n
+      )
     );
 
 
@@ -761,56 +742,64 @@ function syncTeamSelectors() {
         game.activeAwayTeam ||
         2
       ),
-      teamCount
+      n
     );
 
 
   if (
-    away === home &&
-    teamCount > 1
+    away ===
+      Number(
+        $('homeTeam').value
+      ) &&
+    n > 1
   ) {
 
     away =
-      home === 1
+      Number(
+        $('homeTeam').value
+      ) === 1
         ? 2
         : 1;
   }
 
 
-  $('homeTeam').value =
-    String(home);
-
-
   $('awayTeam').value =
-    String(away);
+    String(
+      away
+    );
 
 
   renderGoalTeamOptions();
 }
 
 
-// ======================================================
-// RENDER EVERYTHING
-// ======================================================
+// =========================
+// RENDER ALL
+// =========================
 
 function renderAll() {
 
   renderPlayers();
+
   renderTeams();
+
   renderStats();
+
   renderTimer();
+
   renderScoreboard();
+
   renderGoalEvents();
 }
 
 
-// ======================================================
+// =========================
 // PLAYERS
-// ======================================================
+// =========================
 
 function renderPlayers() {
 
-  const maximumPlayers =
+  const target =
     Number(
       game.teamCount ||
       4
@@ -822,55 +811,49 @@ function renderPlayers() {
 
 
   $('adminCount').textContent =
-    `${players.length}/${maximumPlayers} שחקנים`;
-
-
-  if (
-    players.length === 0
-  ) {
-
-    $('adminPlayers').innerHTML =
-      '<span class="muted">אין שחקנים רשומים.</span>';
-
-    return;
-  }
+    `${players.length}/${target} שחקנים`;
 
 
   $('adminPlayers').innerHTML =
-    players.map(
-      player => `
+    players
+      .map(
+        player => `
 
-        <div class="player-row">
+          <div class="player-row">
 
-          <span>
+            <span>
 
-            <b>
-              ${escapeHtml(player.name)}
-            </b>
+              <b>
+                ${escapeHtml(player.name)}
+              </b>
 
-            <span class="pill">
+              <span class="pill">
 
-              ${
-                player.team
-                  ? teamLabel(player.team)
-                  : 'ללא קבוצה'
-              }
+                ${
+                  player.team
+                    ? teamLabel(
+                        player.team
+                      )
+                    : 'ללא קבוצה'
+                }
+
+              </span>
 
             </span>
 
-          </span>
+            <button
+              class="danger small remove"
+              data-id="${player.id}"
+            >
+              הסר
+            </button>
 
-          <button
-            class="danger small remove"
-            data-id="${player.id}"
-          >
-            הסר
-          </button>
+          </div>
 
-        </div>
-
-      `
-    ).join('');
+        `
+      )
+      .join('') ||
+    '<span class="muted">אין שחקנים.</span>';
 
 
   document
@@ -881,19 +864,8 @@ function renderPlayers() {
       button => {
 
         button.onclick =
-          async () => {
-
-            if (
-              !confirm(
-                'להסיר את השחקן מהמשחק?'
-              )
-            ) {
-
-              return;
-            }
-
-
-            await deleteDoc(
+          () =>
+            deleteDoc(
               doc(
                 db,
                 'games',
@@ -902,19 +874,19 @@ function renderPlayers() {
                 button.dataset.id
               )
             );
-          };
+
       }
     );
 }
 
 
-// ======================================================
+// =========================
 // TEAMS
-// ======================================================
+// =========================
 
 function renderTeams() {
 
-  const teamCount =
+  const n =
     Number(
       game.teamCount ||
       4
@@ -925,10 +897,12 @@ function renderTeams() {
     Array
       .from(
         {
-          length:
-            teamCount
+          length: n
         },
-        (_, index) => {
+        (
+          _,
+          index
+        ) => {
 
           const team =
             index + 1;
@@ -953,59 +927,56 @@ function renderTeams() {
               </h3>
 
               ${
-                members.length
-                  ? members.map(
-                      player => `
+                members
+                  .map(
+                    player => `
 
-                        <div class="member">
+                      <div class="member">
 
-                          <span>
-                            ${escapeHtml(player.name)}
-                          </span>
+                        ${escapeHtml(player.name)}
 
-                          <select
-                            class="select-inline move"
-                            data-id="${player.id}"
-                          >
+                        <select
+                          class="select-inline move"
+                          data-id="${player.id}"
+                        >
 
-                            ${
-                              Array.from(
+                          ${
+                            Array
+                              .from(
                                 {
-                                  length:
-                                    teamCount
+                                  length: n
                                 },
-                                (_, teamIndex) => {
-
-                                  const newTeam =
-                                    teamIndex + 1;
-
-                                  return `
+                                (
+                                  _,
+                                  teamIndex
+                                ) =>
+                                  `
                                     <option
-                                      value="${newTeam}"
+                                      value="${teamIndex + 1}"
                                       ${
-                                        newTeam === team
+                                        teamIndex + 1 === team
                                           ? 'selected'
                                           : ''
                                       }
                                     >
-                                      ${teamLabel(newTeam)}
+                                      ${teamLabel(teamIndex + 1)}
                                     </option>
-                                  `;
-                                }
-                              ).join('')
-                            }
+                                  `
+                              )
+                              .join('')
+                          }
 
-                          </select>
+                        </select>
 
-                        </div>
+                      </div>
 
-                      `
-                    ).join('')
-                  : '<div class="member muted">הקבוצה ריקה</div>'
+                    `
+                  )
+                  .join('') ||
+                '<div class="member muted">ריקה</div>'
               }
 
             </div>
-
           `;
         }
       )
@@ -1020,9 +991,8 @@ function renderTeams() {
       select => {
 
         select.onchange =
-          async () => {
-
-            await updateDoc(
+          () =>
+            updateDoc(
               doc(
                 db,
                 'games',
@@ -1037,1045 +1007,1028 @@ function renderTeams() {
                   )
               }
             );
-          };
+
       }
     );
 }
 
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js';
 
-// ======================================================
-// STATS
-// ======================================================
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
+} from 'https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js';
 
-function renderStats() {
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+  writeBatch,
+  serverTimestamp,
+  increment
+} from 'https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js';
 
-  if (!$('statsRows')) {
-    return;
+import {
+  firebaseConfig,
+  ADMIN_EMAIL
+} from './firebase-config.js';
+
+
+const $ = id => document.getElementById(id);
+
+const app = initializeApp(firebaseConfig);
+
+const auth = getAuth(app);
+
+const db = getFirestore(app);
+
+const GAME = 'current';
+
+const gameRef = doc(
+  db,
+  'games',
+  GAME
+);
+
+
+// =========================
+// GAME STATE
+// =========================
+
+let game = {
+
+  teamCount: 4,
+
+  playersPerTeam: 5,
+
+  status: 'registration',
+
+  timerDuration: 600,
+
+  timerRemaining: 600,
+
+  timerRunning: false,
+
+  timerEndAt: null,
+
+  activeHomeTeam: 1,
+
+  activeAwayTeam: 2,
+
+  scores: {
+    1: 0,
+    2: 0,
+    3: 0,
+    4: 0
   }
 
+};
 
-  $('statsRows').innerHTML =
-    players.map(
-      player => `
 
-        <tr>
+let players = [];
 
-          <td>
-            ${escapeHtml(player.name)}
-          </td>
+let events = [];
 
-          <td>
-            ${Number(player.goals || 0)}
-          </td>
+let timerInterval = null;
 
-          <td>
-            ${Number(player.assists || 0)}
-          </td>
 
-          <td>
-            <input
-              type="checkbox"
-              data-id="${player.id}"
-              class="sm"
-            >
-          </td>
+let unsubscribeGame = null;
 
-          <td>
-            <input
-              type="checkbox"
-              data-id="${player.id}"
-              class="sw"
-            >
-          </td>
+let unsubscribePlayers = null;
 
-        </tr>
+let unsubscribeEvents = null;
 
-      `
-    ).join('');
+
+// =========================
+// FIRESTORE LISTENERS
+// =========================
+
+function stopAdminListeners() {
+
+  if (unsubscribeGame) {
+    unsubscribeGame();
+  }
+
+  if (unsubscribePlayers) {
+    unsubscribePlayers();
+  }
+
+  if (unsubscribeEvents) {
+    unsubscribeEvents();
+  }
+
+  unsubscribeGame = null;
+
+  unsubscribePlayers = null;
+
+  unsubscribeEvents = null;
 }
 
 
-// ======================================================
-// TIMER
-// ======================================================
+function startAdminListeners() {
 
-function renderTimer() {
+  stopAdminListeners();
 
-  if (!$('timerDisplay')) {
-    return;
+
+  // GAME
+
+  unsubscribeGame = onSnapshot(
+
+    gameRef,
+
+    async snap => {
+
+      if (snap.exists()) {
+
+        game = {
+          ...game,
+          ...snap.data()
+        };
+
+      } else {
+
+        await setDoc(
+          gameRef,
+          game
+        );
+
+      }
+
+      syncSettings();
+
+      renderAll();
+    },
+
+    error => {
+
+      console.error(
+        'Game listener error:',
+        error
+      );
+
+      if ($('settingsMsg')) {
+
+        $('settingsMsg').textContent =
+          'אין הרשאה לקרוא את נתוני המשחק.';
+
+      }
+
+    }
+  );
+
+
+  // PLAYERS
+
+  unsubscribePlayers = onSnapshot(
+
+    collection(
+      db,
+      'games',
+      GAME,
+      'players'
+    ),
+
+    snap => {
+
+      players =
+        snap.docs.map(
+          d => ({
+            id: d.id,
+            ...d.data()
+          })
+        );
+
+      renderAll();
+    },
+
+    error => {
+
+      console.error(
+        'Players listener error:',
+        error
+      );
+
+    }
+  );
+
+
+  // EVENTS
+
+  unsubscribeEvents = onSnapshot(
+
+    collection(
+      db,
+      'games',
+      GAME,
+      'events'
+    ),
+
+    snap => {
+
+      events =
+        snap.docs
+          .map(
+            d => ({
+              id: d.id,
+              ...d.data()
+            })
+          )
+          .sort(
+            (a, b) =>
+              Number(
+                a.createdAtMs || 0
+              ) -
+              Number(
+                b.createdAtMs || 0
+              )
+          );
+
+      renderGoalEvents();
+    },
+
+    error => {
+
+      console.error(
+        'Events listener error:',
+        error
+      );
+
+    }
+  );
+}
+
+
+// =========================
+// ADMIN LOGIN
+// =========================
+
+$('loginBtn').addEventListener(
+  'click',
+  async () => {
+
+    const email =
+      $('email').value.trim();
+
+    const password =
+      $('password').value;
+
+
+    if (!email) {
+
+      $('loginMsg').textContent =
+        'יש להזין כתובת אימייל.';
+
+      return;
+    }
+
+
+    if (!password) {
+
+      $('loginMsg').textContent =
+        'יש להזין סיסמה.';
+
+      return;
+    }
+
+
+    $('loginMsg').textContent =
+      'מתחבר...';
+
+
+    try {
+
+      const result =
+        await signInWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
+
+
+      const loggedEmail =
+        (result.user.email || '')
+          .trim()
+          .toLowerCase();
+
+
+      const allowedEmail =
+        (ADMIN_EMAIL || '')
+          .trim()
+          .toLowerCase();
+
+
+      if (
+        loggedEmail !==
+        allowedEmail
+      ) {
+
+        await signOut(auth);
+
+        $('loginMsg').textContent =
+          'החשבון הזה אינו מורשה כמנהל.';
+
+        return;
+      }
+
+
+      $('loginMsg').textContent = '';
+
+    } catch (error) {
+
+      console.error(
+        'Admin login error:',
+        error
+      );
+
+
+      switch (error.code) {
+
+        case 'auth/invalid-credential':
+
+          $('loginMsg').textContent =
+            'האימייל או הסיסמה שגויים.';
+
+          break;
+
+
+        case 'auth/user-not-found':
+
+          $('loginMsg').textContent =
+            'לא נמצא משתמש עם האימייל הזה.';
+
+          break;
+
+
+        case 'auth/wrong-password':
+
+          $('loginMsg').textContent =
+            'הסיסמה שגויה.';
+
+          break;
+
+
+        case 'auth/operation-not-allowed':
+
+          $('loginMsg').textContent =
+            'Email/Password לא מופעל ב-Firebase Authentication.';
+
+          break;
+
+
+        case 'auth/too-many-requests':
+
+          $('loginMsg').textContent =
+            'יותר מדי ניסיונות התחברות. נסה שוב מאוחר יותר.';
+
+          break;
+
+
+        default:
+
+          $('loginMsg').textContent =
+            'שגיאת התחברות: ' +
+            (
+              error.code ||
+              error.message
+            );
+
+      }
+    }
   }
+);
 
 
-  const remaining =
-    timerSecondsLeft();
+// ENTER ON PASSWORD
+
+$('password').addEventListener(
+  'keydown',
+  event => {
+
+    if (event.key === 'Enter') {
+
+      $('loginBtn').click();
+
+    }
+  }
+);
 
 
-  $('timerDisplay').textContent =
-    formatTimer(
-      remaining
+// LOGOUT
+
+$('logoutBtn').addEventListener(
+  'click',
+  async () => {
+
+    stopAdminListeners();
+
+    await signOut(auth);
+
+  }
+);
+
+
+// AUTH STATE
+
+onAuthStateChanged(
+  auth,
+  async user => {
+
+    const isAdmin =
+      !!user?.email &&
+      user.email.trim().toLowerCase() ===
+        (ADMIN_EMAIL || '').trim().toLowerCase();
+
+
+    $('loginCard')
+      .classList
+      .toggle(
+        'hidden',
+        !!isAdmin
+      );
+
+
+    $('adminApp')
+      .classList
+      .toggle(
+        'hidden',
+        !isAdmin
+      );
+
+
+    $('logoutBtn')
+      .classList
+      .toggle(
+        'hidden',
+        !isAdmin
+      );
+
+
+    if (isAdmin) {
+
+      $('loginMsg').textContent =
+        '';
+
+      startAdminListeners();
+
+      return;
+    }
+
+
+    stopAdminListeners();
+
+
+    if (
+      user &&
+      !user.isAnonymous
+    ) {
+
+      $('loginMsg').textContent =
+        'החשבון הזה אינו מורשה כמנהל.';
+
+      await signOut(auth);
+
+    }
+  }
+);
+
+
+// =========================
+// HELPERS
+// =========================
+
+function teamLabel(team) {
+
+  return `קבוצה ${team}`;
+}
+
+
+function currentScore(team) {
+
+  return Number(
+    game.scores?.[String(team)] ??
+    game.scores?.[team] ??
+    0
+  );
+}
+
+
+function clamp(
+  value,
+  min,
+  max
+) {
+
+  value =
+    Number(value);
+
+  return Number.isFinite(value)
+    ? Math.min(
+        max,
+        Math.max(
+          min,
+          value
+        )
+      )
+    : min;
+}
+
+
+function formatTimer(total) {
+
+  total =
+    Math.max(
+      0,
+      Math.floor(
+        Number(total) || 0
+      )
     );
 
-
-  $('timerDisplay')
-    .classList
-    .toggle(
-      'timer-running',
-      !!game.timerRunning &&
-      remaining > 0
+  const minutes =
+    String(
+      Math.floor(
+        total / 60
+      )
+    ).padStart(
+      2,
+      '0'
     );
 
+  const seconds =
+    String(
+      total % 60
+    ).padStart(
+      2,
+      '0'
+    );
 
-  $('timerPauseBtn').disabled =
-    !game.timerRunning;
+  return `${minutes}:${seconds}`;
+}
 
+
+function timerSecondsLeft() {
 
   if (
     game.timerRunning &&
-    remaining <= 0
+    game.timerEndAt
   ) {
 
-    finishTimer();
-  }
-}
-
-
-function startTimerTicker() {
-
-  if (timerInterval) {
-
-    clearInterval(
-      timerInterval
-    );
-  }
-
-
-  timerInterval =
-    setInterval(
-      renderTimer,
-      250
-    );
-}
-
-
-async function finishTimer() {
-
-  if (
-    !game.timerRunning
-  ) {
-
-    return;
-  }
-
-
-  game.timerRunning =
-    false;
-
-  game.timerRemaining =
-    0;
-
-  game.timerEndAt =
-    null;
-
-
-  renderTimer();
-
-
-  try {
-
-    await updateDoc(
-      gameRef,
-      {
-        timerRunning:
-          false,
-
-        timerRemaining:
-          0,
-
-        timerEndAt:
-          null
-      }
-    );
-
-  } catch (error) {
-
-    console.error(
-      'Timer finish error:',
-      error
-    );
-  }
-
-
-  $('timerMsg').textContent =
-    'הזמן הסתיים ⏱️';
-}
-
-
-// START / RESUME TIMER
-
-$('timerStartBtn').onclick =
-  async () => {
-
-    let remaining =
-      timerSecondsLeft();
-
-
-    if (
-      remaining <= 0
-    ) {
-
-      const minutes =
-        clamp(
-          $('timerMinutes').value,
-          0,
-          180
-        );
-
-
-      const seconds =
-        clamp(
-          $('timerSeconds').value,
-          0,
-          59
-        );
-
-
-      remaining =
-        minutes * 60 +
-        seconds;
-    }
-
-
-    if (
-      remaining <= 0
-    ) {
-
-      $('timerMsg').textContent =
-        'יש להגדיר זמן גדול מ־0.';
-
-      return;
-    }
-
-
-    const endAt =
-      Date.now() +
-      remaining * 1000;
-
-
-    await setDoc(
-      gameRef,
-      {
-        timerDuration:
-          Math.max(
-            remaining,
-            Number(
-              game.timerDuration
-            ) ||
-            remaining
-          ),
-
-        timerRemaining:
-          remaining,
-
-        timerRunning:
-          true,
-
-        timerEndAt:
-          endAt
-      },
-      {
-        merge:
-          true
-      }
-    );
-
-
-    $('timerMsg').textContent =
-      'השעון הופעל.';
-  };
-
-
-// PAUSE TIMER
-
-$('timerPauseBtn').onclick =
-  async () => {
-
-    if (
-      !game.timerRunning
-    ) {
-
-      return;
-    }
-
-
-    const remaining =
-      timerSecondsLeft();
-
-
-    await updateDoc(
-      gameRef,
-      {
-        timerRunning:
-          false,
-
-        timerRemaining:
-          remaining,
-
-        timerEndAt:
-          null
-      }
-    );
-
-
-    $('timerMsg').textContent =
-      'השעון נעצר.';
-  };
-
-
-// RESET TIMER
-
-$('timerResetBtn').onclick =
-  async () => {
-
-    const minutes =
-      clamp(
-        $('timerMinutes').value,
-        0,
-        180
-      );
-
-
-    const seconds =
-      clamp(
-        $('timerSeconds').value,
-        0,
-        59
-      );
-
-
-    const total =
-      minutes * 60 +
-      seconds;
-
-
-    if (
-      total <= 0
-    ) {
-
-      $('timerMsg').textContent =
-        'יש להגדיר זמן גדול מ־0.';
-
-      return;
-    }
-
-
-    await setDoc(
-      gameRef,
-      {
-        timerDuration:
-          total,
-
-        timerRemaining:
-          total,
-
-        timerRunning:
-          false,
-
-        timerEndAt:
-          null
-      },
-      {
-        merge:
-          true
-      }
-    );
-
-
-    $('timerMsg').textContent =
-      'השעון אופס לזמן שהוגדר.';
-  };
-
-
-// ======================================================
-// SCOREBOARD
-// ======================================================
-
-function renderScoreboard() {
-
-  const home =
-    Number(
-      game.activeHomeTeam ||
-      1
-    );
-
-
-  const away =
-    Number(
-      game.activeAwayTeam ||
-      2
-    );
-
-
-  $('homeTeamLabel').textContent =
-    teamLabel(home);
-
-
-  $('awayTeamLabel').textContent =
-    teamLabel(away);
-
-
-  $('homeScore').textContent =
-    currentScore(home);
-
-
-  $('awayScore').textContent =
-    currentScore(away);
-
-
-  renderGoalTeamOptions();
-}
-
-
-// ======================================================
-// GOAL TEAM OPTIONS
-// ======================================================
-
-function renderGoalTeamOptions() {
-
-  if (!$('goalTeam')) {
-    return;
-  }
-
-
-  const home =
-    Number(
-      game.activeHomeTeam ||
-      1
-    );
-
-
-  const away =
-    Number(
-      game.activeAwayTeam ||
-      2
-    );
-
-
-  const previous =
-    Number(
-      $('goalTeam').value ||
-      home
-    );
-
-
-  $('goalTeam').innerHTML =
-    `
-      <option value="${home}">
-        ${teamLabel(home)}
-      </option>
-
-      <option value="${away}">
-        ${teamLabel(away)}
-      </option>
-    `;
-
-
-  $('goalTeam').value =
-    String(
-      previous === away
-        ? away
-        : home
-    );
-
-
-  renderScorerOptions();
-}
-
-
-// ======================================================
-// SCORER / ASSISTER OPTIONS
-// ======================================================
-
-function renderScorerOptions() {
-
-  if (
-    !$('scorer') ||
-    !$('assister')
-  ) {
-
-    return;
-  }
-
-
-  const team =
-    Number(
-      $('goalTeam')?.value ||
-      game.activeHomeTeam ||
-      1
-    );
-
-
-  const members =
-    players.filter(
-      player =>
-        Number(
-          player.team
-        ) ===
-        team
-    );
-
-
-  $('scorer').innerHTML =
-    '<option value="">בחר כובש</option>' +
-    members.map(
-      player =>
-        `
-          <option value="${player.id}">
-            ${escapeHtml(player.name)}
-          </option>
-        `
-    ).join('');
-
-
-  $('assister').innerHTML =
-    '<option value="">ללא בישול</option>' +
-    members.map(
-      player =>
-        `
-          <option value="${player.id}">
-            ${escapeHtml(player.name)}
-          </option>
-        `
-    ).join('');
-}
-
-
-// ======================================================
-// GOAL EVENTS
-// ======================================================
-
-function renderGoalEvents() {
-
-  if (!$('goalEvents')) {
-    return;
-  }
-
-
-  const goalEvents =
-    events.filter(
-      event =>
-        event.type ===
-        'goal'
-    );
-
-
-  if (
-    goalEvents.length === 0
-  ) {
-
-    $('goalEvents').innerHTML =
-      '<span class="muted">עדיין אין אירועי גול.</span>';
-
-    return;
-  }
-
-
-  $('goalEvents').innerHTML =
-    [
-      ...goalEvents
-    ]
-      .reverse()
-      .map(
-        event => `
-
-          <div class="event-row">
-
-            <div>
-
-              <b>
-                ⚽ ${escapeHtml(event.scorerName || 'לא ידוע')}
-              </b>
-
-              ·
-              ${teamLabel(event.team)}
-
-              ${
-                event.assisterName
-                  ? ` · בישול: ${escapeHtml(event.assisterName)}`
-                  : ''
-              }
-
-              <div class="muted small">
-                ${escapeHtml(event.timerText || '')}
-              </div>
-
-            </div>
-
-            <button
-              class="danger small undo-goal"
-              data-id="${event.id}"
-            >
-              בטל גול
-            </button>
-
-          </div>
-
-        `
+    return Math.max(
+      0,
+      Math.ceil(
+        (
+          Number(
+            game.timerEndAt
+          ) -
+          Date.now()
+        ) /
+        1000
       )
-      .join('');
-
-
-  document
-    .querySelectorAll(
-      '.undo-goal'
-    )
-    .forEach(
-      button => {
-
-        button.onclick =
-          () =>
-            undoGoal(
-              button.dataset.id
-            );
-      }
     );
+  }
+
+  return Math.max(
+    0,
+    Number(
+      game.timerRemaining ??
+      game.timerDuration ??
+      0
+    )
+  );
 }
 
 
-// ======================================================
-// SHUFFLE TEAMS
-// ======================================================
+function shuffled(array) {
 
-async function shuffle() {
+  array =
+    [...array];
 
-  const teamCount =
+  for (
+    let i =
+      array.length - 1;
+    i > 0;
+    i--
+  ) {
+
+    const j =
+      Math.floor(
+        Math.random() *
+        (
+          i + 1
+        )
+      );
+
+    [
+      array[i],
+      array[j]
+    ] =
+    [
+      array[j],
+      array[i]
+    ];
+  }
+
+  return array;
+}
+
+
+// =========================
+// SETTINGS
+// =========================
+
+function syncSettings() {
+
+  $('teamCount').value =
+    String(
+      game.teamCount || 4
+    );
+
+  $('playersPerTeam').value =
+    String(
+      game.playersPerTeam || 5
+    );
+
+  $('gameStatus').value =
+    game.status ||
+    'registration';
+
+  syncTimerInputs();
+
+  syncTeamSelectors();
+}
+
+
+function syncTimerInputs() {
+
+  const total =
+    Math.max(
+      0,
+      Number(
+        game.timerDuration ??
+        600
+      )
+    );
+
+  $('timerMinutes').value =
+    Math.floor(
+      total / 60
+    );
+
+  $('timerSeconds').value =
+    total % 60;
+}
+
+
+function syncTeamSelectors() {
+
+  const n =
     Number(
       game.teamCount ||
       4
     );
 
 
-  if (
-    players.length === 0
-  ) {
-
-    $('settingsMsg').textContent =
-      'אין שחקנים להגרלה.';
-
-    return;
-  }
-
-
-  const playerList =
-    shuffled(
-      players
-    );
-
-
-  const batch =
-    writeBatch(db);
-
-
-  playerList.forEach(
-    (
-      player,
-      index
-    ) => {
-
-      batch.update(
-        doc(
-          db,
-          'games',
-          GAME,
-          'players',
-          player.id
-        ),
+  const options =
+    Array
+      .from(
         {
-          team:
-            (
-              index %
-              teamCount
-            ) +
-            1
-        }
-      );
+          length: n
+        },
+        (
+          _,
+          index
+        ) =>
+          `<option value="${index + 1}">
+            ${teamLabel(index + 1)}
+          </option>`
+      )
+      .join('');
+
+
+  [
+    'homeTeam',
+    'awayTeam'
+  ].forEach(
+    id => {
+
+      const select =
+        $(id);
+
+      const old =
+        select.value;
+
+      select.innerHTML =
+        options;
+
+      if (
+        old &&
+        Number(old) <= n
+      ) {
+
+        select.value =
+          old;
+      }
     }
   );
 
 
-  await batch.commit();
-
-
-  $('settingsMsg').textContent =
-    'הקבוצות הוגרלו בהצלחה.';
-}
-
-
-// ======================================================
-// ADD GOAL
-// ======================================================
-
-async function addGoal() {
-
-  const team =
-    Number(
-      $('goalTeam').value
-    );
-
-
-  const scorerId =
-    $('scorer').value;
-
-
-  const assisterId =
-    $('assister').value;
-
-
-  const home =
-    Number(
-      game.activeHomeTeam ||
-      1
-    );
-
-
-  const away =
-    Number(
-      game.activeAwayTeam ||
-      2
-    );
-
-
-  if (
-    ![
-      home,
-      away
-    ].includes(team)
-  ) {
-
-    $('scoreMsg').textContent =
-      'יש לבחור קבוצה שמשחקת כרגע.';
-
-    return;
-  }
-
-
-  if (!scorerId) {
-
-    $('scoreMsg').textContent =
-      'יש לבחור מי כבש את הגול.';
-
-    return;
-  }
-
-
-  const scorer =
-    players.find(
-      player =>
-        player.id ===
-        scorerId
-    );
-
-
-  const assister =
-    assisterId
-      ? players.find(
-          player =>
-            player.id ===
-            assisterId
-        )
-      : null;
-
-
-  if (
-    !scorer ||
-    Number(
-      scorer.team
-    ) !==
-      team
-  ) {
-
-    $('scoreMsg').textContent =
-      'יש לבחור כובש מהקבוצה הנכונה.';
-
-    return;
-  }
-
-
-  if (
-    assister &&
-    Number(
-      assister.team
-    ) !==
-      team
-  ) {
-
-    $('scoreMsg').textContent =
-      'המבשל חייב להיות מאותה קבוצה.';
-
-    return;
-  }
-
-
-  if (
-    assisterId &&
-    assisterId ===
-      scorerId
-  ) {
-
-    $('scoreMsg').textContent =
-      'כובש לא יכול לבשל לעצמו.';
-
-    return;
-  }
-
-
-  const eventRef =
-    doc(
-      collection(
-        db,
-        'games',
-        GAME,
-        'events'
+  $('homeTeam').value =
+    String(
+      Math.min(
+        Number(
+          game.activeHomeTeam ||
+          1
+        ),
+        n
       )
     );
 
 
-  const batch =
-    writeBatch(db);
-
-
-  batch.update(
-    gameRef,
-    {
-      [`scores.${team}`]:
-        increment(1)
-    }
-  );
-
-
-  batch.update(
-    doc(
-      db,
-      'games',
-      GAME,
-      'players',
-      scorerId
-    ),
-    {
-      goals:
-        increment(1)
-    }
-  );
-
-
-  if (assister) {
-
-    batch.update(
-      doc(
-        db,
-        'games',
-        GAME,
-        'players',
-        assister.id
+  let away =
+    Math.min(
+      Number(
+        game.activeAwayTeam ||
+        2
       ),
-      {
-        assists:
-          increment(1)
-      }
+      n
     );
+
+
+  if (
+    away ===
+      Number(
+        $('homeTeam').value
+      ) &&
+    n > 1
+  ) {
+
+    away =
+      Number(
+        $('homeTeam').value
+      ) === 1
+        ? 2
+        : 1;
   }
 
 
-  const remaining =
-    timerSecondsLeft();
+  $('awayTeam').value =
+    String(
+      away
+    );
 
 
-  batch.set(
-    eventRef,
-    {
-      type:
-        'goal',
-
-      team,
-
-      scorerId,
-
-      scorerName:
-        scorer.name,
-
-      assisterId:
-        assister?.id ||
-        null,
-
-      assisterName:
-        assister?.name ||
-        null,
-
-      timerRemaining:
-        remaining,
-
-      timerText:
-        formatTimer(
-          remaining
-        ),
-
-      createdAt:
-        serverTimestamp(),
-
-      createdAtMs:
-        Date.now()
-    }
-  );
-
-
-  await batch.commit();
-
-
-  $('scoreMsg').textContent =
-    `גול ל${teamLabel(team)} — ${scorer.name} ⚽`;
-
-
-  $('scorer').value =
-    '';
-
-
-  $('assister').value =
-    '';
+  renderGoalTeamOptions();
 }
 
 
-// ======================================================
-// UNDO GOAL
-// ======================================================
+// =========================
+// RENDER ALL
+// =========================
 
-async function undoGoal(eventId) {
+function renderAll() {
 
-  const event =
-    events.find(
-      item =>
-        item.id ===
-          eventId &&
-        item.type ===
-          'goal'
+  renderPlayers();
+
+  renderTeams();
+
+  renderStats();
+
+  renderTimer();
+
+  renderScoreboard();
+
+  renderGoalEvents();
+}
+
+
+// =========================
+// PLAYERS
+// =========================
+
+function renderPlayers() {
+
+  const target =
+    Number(
+      game.teamCount ||
+      4
+    ) *
+    Number(
+      game.playersPerTeam ||
+      5
     );
 
 
-  if (!event) {
-    return;
-  }
+  $('adminCount').textContent =
+    `${players.length}/${target} שחקנים`;
 
 
-  const currentTeamScore =
-    currentScore(
-      event.team
-    );
+  $('adminPlayers').innerHTML =
+    players
+      .map(
+        player => `
+
+          <div class="player-row">
+
+            <span>
+
+              <b>
+                ${escapeHtml(player.name)}
+              </b>
+
+              <span class="pill">
+
+                ${
+                  player.team
+                    ? teamLabel(
+                        player.team
+                      )
+                    : 'ללא קבוצה'
+                }
+
+              </span>
+
+            </span>
+
+            <button
+              class="danger small remove"
+              data-id="${player.id}"
+            >
+              הסר
+            </button>
+
+          </div>
+
+        `
+      )
+      .join('') ||
+    '<span class="muted">אין שחקנים.</span>';
 
 
-  const scorer =
-    players.find(
-      player =>
-        player.id ===
-        event.scorerId
-    );
-
-
-  const assister =
-    event.assisterId
-      ? players.find(
-          player =>
-            player.id ===
-            event.assisterId
-        )
-      : null;
-
-
-  const batch =
-    writeBatch(db);
-
-
-  batch.update(
-    gameRef,
-    {
-      [`scores.${event.team}`]:
-        Math.max(
-          0,
-          currentTeamScore - 1
-        )
-    }
-  );
-
-
-  if (scorer) {
-
-    batch.update(
-      doc(
-        db,
-        'games',
-        GAME,
-        'players',
-        scorer.id
-      ),
-      {
-        goals:
-          Math.max(
-            0,
-            Number(
-              scorer.goals ||
-              0
-            ) -
-            1
-          )
-      }
-    );
-  }
-
-
-  if (assister) {
-
-    batch.update(
-      doc(
-        db,
-        'games',
-        GAME,
-        'players',
-        assister.id
-      ),
-      {
-        assists:
-          Math.max(
-            0,
-            Number(
-              assister.assists ||
-              0
-            ) -
-            1
-          )
-      }
-    );
-  }
-
-
-  batch.delete(
-    doc(
-      db,
-      'games',
-      GAME,
-      'events',
-      eventId
+  document
+    .querySelectorAll(
+      '.remove'
     )
-  );
+    .forEach(
+      button => {
 
+        button.onclick =
+          () =>
+            deleteDoc(
+              doc(
+                db,
+                'games',
+                GAME,
+                'players',
+                button.dataset.id
+              )
+            );
 
-  await batch.commit();
-
-
-  $('scoreMsg').textContent =
-    'הגול בוטל והסטטיסטיקה עודכנה.';
+      }
+    );
 }
 
 
-// ======================================================
-// RESET SCORE + GOAL EVENTS
-// ======================================================
+// =========================
+// TEAMS
+// =========================
+
+function renderTeams() {
+
+  const n =
+    Number(
+      game.teamCount ||
+      4
+    );
+
+
+  $('adminTeams').innerHTML =
+    Array
+      .from(
+        {
+          length: n
+        },
+        (
+          _,
+          index
+        ) => {
+
+          const team =
+            index + 1;
+
+
+          const members =
+            players.filter(
+              player =>
+                Number(
+                  player.team
+                ) ===
+                team
+            );
+
+
+          return `
+
+            <div class="team">
+
+              <h3>
+                ${teamLabel(team)}
+              </h3>
+
+              ${
+                members
+                  .map(
+                    player => `
+
+                      <div class="member">
+
+                        ${escapeHtml(player.name)}
+
+                        <select
+                          class="select-inline move"
+                          data-id="${player.id}"
+                        >
+
+                          ${
+                            Array
+                              .from(
+                                {
+                                  length: n
+                                },
+                                (
+                                  _,
+                                  teamIndex
+                                ) =>
+                                  `
+                                    <option
+                                      value="${teamIndex + 1}"
+                                      ${
+                                        teamIndex + 1 === team
+                                          ? 'selected'
+                                          : ''
+                                      }
+                                    >
+                                      ${teamLabel(teamIndex + 1)}
+                                    </option>
+                                  `
+                              )
+                              .join('')
+                          }
+
+                        </select>
+
+                      </div>
+
+                    `
+                  )
+                  .join('') ||
+                '<div class="member muted">ריקה</div>'
+              }
+
+            </div>
+          `;
+        }
+      )
+      .join('');
+
+
+  document
+    .querySelectorAll(
+      '.move'
+    )
+    .forEach(
+      select => {
+
+        select.onchange =
+          () =>
+            updateDoc(
+              doc(
+                db,
+                'games',
+                GAME,
+                'players',
+                select.dataset.id
+              ),
+              {
+                team:
+                  Number(
+                    select.value
+                  )
+              }
+            );
+
+      }
+    );
+}
+
+// =========================
+// RESET SCORE
+// =========================
 
 async function resetScoreAndEvents() {
 
@@ -2097,39 +2050,38 @@ async function resetScoreAndEvents() {
     );
 
 
-  const goalsByPlayer =
+  const goalByPlayer =
     {};
 
 
-  const assistsByPlayer =
+  const assistByPlayer =
     {};
 
 
   goalEvents.forEach(
     event => {
 
-      if (event.scorerId) {
-
-        goalsByPlayer[
-          event.scorerId
-        ] =
-          (
-            goalsByPlayer[
-              event.scorerId
-            ] ||
-            0
-          ) +
-          1;
-      }
+      goalByPlayer[
+        event.scorerId
+      ] =
+        (
+          goalByPlayer[
+            event.scorerId
+          ] ||
+          0
+        ) +
+        1;
 
 
-      if (event.assisterId) {
+      if (
+        event.assisterId
+      ) {
 
-        assistsByPlayer[
+        assistByPlayer[
           event.assisterId
         ] =
           (
-            assistsByPlayer[
+            assistByPlayer[
               event.assisterId
             ] ||
             0
@@ -2141,7 +2093,9 @@ async function resetScoreAndEvents() {
 
 
   const batch =
-    writeBatch(db);
+    writeBatch(
+      db
+    );
 
 
   const scores =
@@ -2149,16 +2103,16 @@ async function resetScoreAndEvents() {
 
 
   for (
-    let team = 1;
-    team <=
+    let i = 1;
+    i <=
       Number(
         game.teamCount ||
         4
       );
-    team++
+    i++
   ) {
 
-    scores[team] =
+    scores[i] =
       0;
   }
 
@@ -2182,7 +2136,7 @@ async function resetScoreAndEvents() {
             0
           ) -
           Number(
-            goalsByPlayer[
+            goalByPlayer[
               player.id
             ] ||
             0
@@ -2198,7 +2152,7 @@ async function resetScoreAndEvents() {
             0
           ) -
           Number(
-            assistsByPlayer[
+            assistByPlayer[
               player.id
             ] ||
             0
@@ -2235,6 +2189,7 @@ async function resetScoreAndEvents() {
           event.id
         )
       );
+
     }
   );
 
@@ -2247,64 +2202,100 @@ async function resetScoreAndEvents() {
 }
 
 
-// ======================================================
-// ACTIVE MATCH TEAMS
-// ======================================================
+// =========================
+// HTML ESCAPE
+// =========================
 
-$('homeTeam').addEventListener(
-  'change',
-  () => {
+function escapeHtml(
+  value
+) {
 
-    if (
-      $('awayTeam').value ===
-      $('homeTeam').value
-    ) {
+  return String(
+    value ??
+    ''
+  ).replace(
+    /[&<>'"]/g,
+    character =>
+      ({
+        '&':
+          '&amp;',
 
-      const teamCount =
-        Number(
-          game.teamCount ||
-          4
-        );
+        '<':
+          '&lt;',
+
+        '>':
+          '&gt;',
+
+        "'":
+          '&#39;',
+
+        '"':
+          '&quot;'
+      })[
+        character
+      ]
+  );
+}
 
 
-      const home =
-        Number(
-          $('homeTeam').value
-        );
+// =========================
+// ACTIVE TEAMS
+// =========================
+
+$('homeTeam')
+  .addEventListener(
+    'change',
+    () => {
+
+      if (
+        $('awayTeam').value ===
+        $('homeTeam').value
+      ) {
+
+        const n =
+          Number(
+            game.teamCount ||
+            4
+          );
 
 
-      $('awayTeam').value =
-        String(
-          home === 1 &&
-          teamCount > 1
-            ? 2
-            : 1
-        );
+        $('awayTeam').value =
+          String(
+            Number(
+              $('homeTeam').value
+            ) ===
+              1 &&
+            n > 1
+              ? 2
+              : 1
+          );
+      }
     }
-  }
-);
+  );
 
 
-$('awayTeam').addEventListener(
-  'change',
-  () => {
+$('awayTeam')
+  .addEventListener(
+    'change',
+    () => {
 
-    if (
-      $('awayTeam').value ===
-      $('homeTeam').value
-    ) {
+      if (
+        $('awayTeam').value ===
+        $('homeTeam').value
+      ) {
 
-      $('scoreMsg').textContent =
-        'יש לבחור שתי קבוצות שונות.';
+        $('scoreMsg').textContent =
+          'יש לבחור שתי קבוצות שונות.';
+      }
     }
-  }
-);
+  );
 
 
-$('goalTeam').addEventListener(
-  'change',
-  renderScorerOptions
-);
+$('goalTeam')
+  .addEventListener(
+    'change',
+    renderScorerOptions
+  );
 
 
 $('addGoalBtn').onclick =
@@ -2315,9 +2306,7 @@ $('resetScoreBtn').onclick =
   resetScoreAndEvents;
 
 
-// ======================================================
 // SAVE MATCHUP
-// ======================================================
 
 $('saveMatchupBtn').onclick =
   async () => {
@@ -2349,11 +2338,13 @@ $('saveMatchupBtn').onclick =
     await setDoc(
       gameRef,
       {
+
         activeHomeTeam:
           home,
 
         activeAwayTeam:
           away
+
       },
       {
         merge:
@@ -2367,31 +2358,16 @@ $('saveMatchupBtn').onclick =
   };
 
 
-// ======================================================
-// SHUFFLE
-// ======================================================
+// =========================
+// SHUFFLE / REVEAL
+// =========================
 
 $('shuffleBtn').onclick =
   shuffle;
 
 
-// ======================================================
-// REVEAL TEAMS
-// ======================================================
-
 $('revealBtn').onclick =
   async () => {
-
-    if (
-      players.length === 0
-    ) {
-
-      $('settingsMsg').textContent =
-        'אין שחקנים רשומים.';
-
-      return;
-    }
-
 
     if (
       players.some(
@@ -2418,22 +2394,16 @@ $('revealBtn').onclick =
   };
 
 
-// ======================================================
+// =========================
 // SAVE SETTINGS
-// ======================================================
+// =========================
 
 $('saveSettings').onclick =
   async () => {
 
-    const teamCount =
+    const n =
       Number(
         $('teamCount').value
-      );
-
-
-    const playersPerTeam =
-      Number(
-        $('playersPerTeam').value
       );
 
 
@@ -2447,18 +2417,17 @@ $('saveSettings').onclick =
 
 
     for (
-      let team = 1;
-      team <=
-        teamCount;
-      team++
+      let i = 1;
+      i <= n;
+      i++
     ) {
 
       if (
-        scores[team] ==
+        scores[i] ==
         null
       ) {
 
-        scores[team] =
+        scores[i] =
           0;
       }
     }
@@ -2467,13 +2436,20 @@ $('saveSettings').onclick =
     await setDoc(
       gameRef,
       {
-        teamCount,
-        playersPerTeam,
+
+        teamCount:
+          n,
+
+        playersPerTeam:
+          Number(
+            $('playersPerTeam').value
+          ),
 
         status:
           $('gameStatus').value,
 
         scores
+
       },
       {
         merge:
@@ -2487,9 +2463,9 @@ $('saveSettings').onclick =
   };
 
 
-// ======================================================
-// RESET COMPLETE GAME
-// ======================================================
+// =========================
+// RESET GAME
+// =========================
 
 $('resetBtn').onclick =
   async () => {
@@ -2527,25 +2503,29 @@ $('resetBtn').onclick =
 
 
     const batch =
-      writeBatch(db);
+      writeBatch(
+        db
+      );
 
 
     playerSnapshot.forEach(
-      item => {
+      documentSnapshot => {
 
         batch.delete(
-          item.ref
+          documentSnapshot.ref
         );
+
       }
     );
 
 
     eventSnapshot.forEach(
-      item => {
+      documentSnapshot => {
 
         batch.delete(
-          item.ref
+          documentSnapshot.ref
         );
+
       }
     );
 
@@ -2553,6 +2533,7 @@ $('resetBtn').onclick =
     batch.set(
       gameRef,
       {
+
         teamCount:
           4,
 
@@ -2586,6 +2567,7 @@ $('resetBtn').onclick =
           3: 0,
           4: 0
         }
+
       }
     );
 
@@ -2594,40 +2576,21 @@ $('resetBtn').onclick =
 
 
     $('settingsMsg').textContent =
-      'המשחק אופס בהצלחה.';
+      'המשחק אופס.';
   };
 
 
-// ======================================================
-// SAVE MATCH STATISTICS
-// ======================================================
+// =========================
+// SAVE MATCH STATS
+// =========================
 
 $('saveStats').onclick =
   async () => {
 
-    if (
-      players.length === 0
-    ) {
-
-      $('statsMsg').textContent =
-        'אין שחקנים לשמירת סטטיסטיקה.';
-
-      return;
-    }
-
-
-    if (
-      !confirm(
-        'לסיים את המשחק ולעדכן את הסטטיסטיקה של כל השחקנים?'
-      )
-    ) {
-
-      return;
-    }
-
-
     const batch =
-      writeBatch(db);
+      writeBatch(
+        db
+      );
 
 
     for (
@@ -2660,6 +2623,7 @@ $('saveStats').onclick =
           player.id
         ),
         {
+
           mvp:
             Number(
               player.mvp ||
@@ -2680,6 +2644,7 @@ $('saveStats').onclick =
               0
             ) +
             1
+
         }
       );
     }
@@ -2688,6 +2653,7 @@ $('saveStats').onclick =
     batch.update(
       gameRef,
       {
+
         status:
           'finished',
 
@@ -2699,6 +2665,7 @@ $('saveStats').onclick =
 
         timerRemaining:
           timerSecondsLeft()
+
       }
     );
 
@@ -2711,8 +2678,8 @@ $('saveStats').onclick =
   };
 
 
-// ======================================================
-// START LOCAL TIMER DISPLAY
-// ======================================================
+// =========================
+// START TIMER TICKER
+// =========================
 
 startTimerTicker();
