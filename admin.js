@@ -1460,68 +1460,55 @@ $('timerPauseBtn').onclick =
 
 // RESET TIMER
 
-$('timerResetBtn').onclick =
-  async () => {
+// RESET / APPLY TIMER
 
-    const minutes =
-      clamp(
-        $('timerMinutes').value,
-        0,
-        180
-      );
+$('timerResetBtn').onclick = async () => {
 
+  const minutes = clamp(
+    $('timerMinutes').value,
+    0,
+    180
+  );
 
-    const seconds =
-      clamp(
-        $('timerSeconds').value,
-        0,
-        59
-      );
+  const seconds = clamp(
+    $('timerSeconds').value,
+    0,
+    59
+  );
 
+  const total =
+    minutes * 60 +
+    seconds;
 
-    const total =
-      minutes *
-      60 +
-      seconds;
-
-
-    if (
-      total <= 0
-    ) {
-
-      $('timerMsg').textContent =
-        'יש להגדיר זמן גדול מ־0.';
-
-      return;
-    }
-
-
-    await setDoc(
-      gameRef,
-      {
-        timerDuration:
-          total,
-
-        timerRemaining:
-          total,
-
-        timerRunning:
-          false,
-
-        timerEndAt:
-          null
-      },
-      {
-        merge:
-          true
-      }
-    );
-
-
+  if (total <= 0) {
     $('timerMsg').textContent =
-      'השעון אופס לזמן שהוגדר.';
-  };
+      'יש להגדיר זמן גדול מ־0.';
+    return;
+  }
 
+  await setDoc(
+    gameRef,
+    {
+      timerDuration: total,
+      timerRemaining: total,
+      timerRunning: false,
+      timerEndAt: null
+    },
+    {
+      merge: true
+    }
+  );
+
+  game.timerDuration = total;
+  game.timerRemaining = total;
+  game.timerRunning = false;
+  game.timerEndAt = null;
+
+  renderTimer();
+
+  $('timerMsg').textContent =
+    `הזמן עודכן ל־${formatTimer(total)} ✅`;
+};
 
 // ======================================================
 // SCOREBOARD
