@@ -1,0 +1,24 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == "your-admin@email.com";
+    }
+    match /games/{gameId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdmin();
+      match /players/{playerId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 3
+          && request.resource.data.team == null;
+        allow update, delete: if isAdmin();
+      }
+      match /events/{eventId} {
+        allow read: if request.auth != null;
+        allow create, update, delete: if isAdmin();
+      }
+    }
+  }
+}

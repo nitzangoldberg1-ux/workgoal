@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>WorkGoal | מנהל</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="wrap">
+  <div class="top">
+    <div><div class="brand">⚽ WorkGoal Admin</div><div class="sub">ניהול משחק, קבוצות, שעון ותוצאות</div></div>
+    <button id="logoutBtn" class="secondary hidden">התנתק</button>
+  </div>
+
+  <section id="loginCard" class="card login">
+    <h2 class="title">כניסת מנהל</h2>
+    <div class="grid">
+      <div><label>אימייל</label><input id="email" type="email"></div>
+      <div><label>סיסמה</label><input id="password" type="password"></div>
+      <button id="loginBtn" class="primary">כניסה</button>
+      <div id="loginMsg" class="muted"></div>
+    </div>
+  </section>
+
+  <div id="adminApp" class="hidden">
+    <section class="card">
+      <h2 class="title">הגדרות משחק</h2>
+      <div class="grid g4">
+        <div><label>מספר קבוצות</label><select id="teamCount"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select></div>
+        <div><label>שחקנים בקבוצה</label><select id="playersPerTeam"><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option></select></div>
+        <div><label>סטטוס</label><select id="gameStatus"><option value="registration">הרשמה</option><option value="revealed">קבוצות חשופות</option><option value="finished">הסתיים</option></select></div>
+        <div style="display:flex;align-items:end"><button id="saveSettings" class="primary" style="width:100%">שמור הגדרות</button></div>
+      </div>
+      <div class="actions" style="margin-top:12px"><button id="shuffleBtn" class="secondary">הגרל קבוצות</button><button id="revealBtn" class="warn">חשוף לכולם</button><button id="resetBtn" class="danger">אפס משחק</button></div>
+      <div id="settingsMsg" class="muted" style="margin-top:10px"></div>
+    </section>
+
+    <section class="card timer-card">
+      <div class="top"><div><h2 class="title">⏱️ שעון משחק</h2><div class="muted">הגדר זמן, הפעל, עצור, המשך או אפס.</div></div></div>
+      <div class="timer-layout">
+        <div class="timer-display" id="timerDisplay" aria-live="polite">00:00</div>
+        <div class="timer-controls">
+          <div class="g2 grid"><div><label>דקות</label><input id="timerMinutes" type="number" min="0" max="180" value="10"></div><div><label>שניות</label><input id="timerSeconds" type="number" min="0" max="59" value="0"></div></div>
+          <div class="actions" style="margin-top:12px"><button id="timerStartBtn" class="primary">▶ הפעל / המשך</button><button id="timerPauseBtn" class="warn">⏸ עצור</button><button id="timerResetBtn" class="secondary">↺ אפס זמן</button></div>
+          <div id="timerMsg" class="muted" style="margin-top:10px"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="top"><div><h2 class="title">⚽ לוח תוצאות חי</h2><div class="muted">בחר שתי קבוצות שמשחקות כרגע. כל גול מעדכן מיד את התוצאה ואת הסטטיסטיקה.</div></div></div>
+      <div class="grid g2">
+        <div><label>קבוצה ביתית</label><select id="homeTeam"></select></div>
+        <div><label>קבוצה אורחת</label><select id="awayTeam"></select></div>
+      </div>
+      <div class="live-score" aria-live="polite">
+        <div><span id="homeTeamLabel">קבוצה 1</span><b id="homeScore">0</b></div>
+        <span class="score-separator">:</span>
+        <div><span id="awayTeamLabel">קבוצה 2</span><b id="awayScore">0</b></div>
+      </div>
+      <div class="actions" style="justify-content:center;margin-top:12px"><button id="saveMatchupBtn" class="secondary">שמור זוג קבוצות</button><button id="resetScoreBtn" class="danger">אפס תוצאה ואירועי גולים</button></div>
+      <div id="scoreMsg" class="muted" style="margin-top:10px;text-align:center"></div>
+
+      <div class="goal-box">
+        <h3 class="title">הוסף גול</h3>
+        <div class="grid goal-grid">
+          <div><label>הקבוצה שכבשה</label><select id="goalTeam"></select></div>
+          <div><label>כובש</label><select id="scorer"><option value="">בחר כובש</option></select></div>
+          <div><label>מבשל</label><select id="assister"><option value="">ללא בישול</option></select></div>
+          <div style="display:flex;align-items:end"><button id="addGoalBtn" class="primary" style="width:100%">+ הוסף גול</button></div>
+        </div>
+      </div>
+
+      <h3>אירועי משחק</h3>
+      <div id="goalEvents" class="events-list"><span class="muted">עדיין אין אירועי גול.</span></div>
+    </section>
+
+    <section class="card"><div class="top"><div><h2 class="title">שחקנים רשומים</h2><div id="adminCount" class="muted"></div></div></div><div id="adminPlayers"></div></section>
+
+    <section class="card"><h2 class="title">ניהול קבוצות</h2><div id="adminTeams" class="teams"></div></section>
+
+    <section class="card">
+      <h2 class="title">סיום משחק וסטטיסטיקה</h2>
+      <p class="muted">גולים ובישולים כבר נרשמים אוטומטית דרך לוח התוצאות. בסיום סמן MVP וניצחון, ושמור כדי להוסיף משחק אחד לכל שחקן.</p>
+      <div style="overflow:auto"><table class="table"><thead><tr><th>שחקן</th><th>גולים</th><th>בישולים</th><th>MVP</th><th>ניצחון</th></tr></thead><tbody id="statsRows"></tbody></table></div>
+      <div class="actions" style="margin-top:14px"><button id="saveStats" class="primary">סיים ושמור סטטיסטיקה</button></div>
+      <div id="statsMsg" class="muted" style="margin-top:10px"></div>
+    </section>
+  </div>
+</main>
+<script type="module" src="admin.js"></script>
+</body>
+</html>

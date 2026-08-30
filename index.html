@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WorkGoal | שחקנים</title><link rel="stylesheet" href="styles.css"></head>
+<body><main class="wrap">
+<div class="top"><div><div class="brand">⚽ WorkGoal</div><div class="sub">הכדורגל של העבודה</div></div><span class="pill">ממשק שחקן</span></div>
+<section id="setupError" class="card hidden"><b>נדרש חיבור Firebase</b><p class="muted">יש לעדכן את firebase-config.js לפי ההוראות בקובץ README.</p></section>
+<section id="registrationCard" class="card"><h2 class="title">הרשמה למשחק</h2><p class="muted">הכנס שם מלא. הקבוצה תיחשף רק לאחר שהמנהל יחשוף את ההגרלה.</p><div class="grid g2"><div><label>שם מלא</label><input id="fullName" maxlength="60" placeholder="לדוגמה: ניצן גולדברג"></div><div style="display:flex;align-items:end"><button id="joinBtn" class="primary" style="width:100%">הירשם למשחק</button></div></div><div id="joinMsg" class="notice hidden" style="margin-top:14px"></div></section>
+<section class="card"><div class="top" style="margin:0"><div><b>מצב הרשמה</b><div id="regStatus" class="muted">טוען...</div></div><div id="count" class="pill">0/20</div></div></section>
+<section id="liveCard" class="card hidden"><div class="top"><div><h2 class="title">משחק חי</h2><div class="muted">התוצאה והשעון מסתנכרנים עם ממשק המנהל.</div></div></div><div id="playerTimer" class="player-timer">00:00</div><div class="live-score"><div><span id="playerHomeLabel">קבוצה 1</span><b id="playerHomeScore">0</b></div><span class="score-separator">:</span><div><span id="playerAwayLabel">קבוצה 2</span><b id="playerAwayScore">0</b></div></div></section>
+<section id="waiting" class="card"><h2 class="title">🔒 הקבוצות עדיין מוסתרות</h2><p class="muted">כאשר המנהל יחשוף את ההגרלה, תראה כאן באיזו קבוצה שובצת.</p></section>
+<section id="myTeamCard" class="card hidden"><h2 class="title">הקבוצה שלי</h2><div id="myTeam"></div></section>
+<section id="profileCard" class="card hidden"><div class="top"><div><div id="profileName" class="profile-name"></div><div id="profileTeam" class="muted"></div></div><span class="tag">פרופיל שחקן</span></div><div class="grid g4"><div class="stat">משחקים<b id="games">0</b></div><div class="stat">גולים<b id="goals">0</b></div><div class="stat">בישולים<b id="assists">0</b></div><div class="stat">MVP<b id="mvp">0</b></div></div><div class="grid g2" style="margin-top:14px"><div class="stat">ניצחונות<b id="wins">0</b></div><div class="stat">אחוז ניצחונות<b id="winRate">0%</b></div></div></section>
+</main><script type="module" src="player.js"></script></body></html>
