@@ -9,7 +9,5 @@ export const firebaseConfig = {
   measurementId: "G-P770K2VE9R"
 };
 // Email allowed to use the admin screen. Must match Firestore rules.
-export const ADMIN_EMAILS = [
-  "nitzangoldberg1@gmail.com",
-  "asaf_sidi@gmail.com"
-];
+export const ADMIN_EMAIL = "nitzangoldberg1@gmail.com";
+export const ADMIN_EMAIL_2 = "assaf_sidi@gmail.com";
