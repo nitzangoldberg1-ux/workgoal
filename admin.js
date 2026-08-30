@@ -518,16 +518,16 @@ $('loginBtn')
           );
 
 
-        const allowedEmail =
-          normalizeEmail(
-            ADMIN_EMAIL
-          );
+const allowedEmails = [
+  normalizeEmail(ADMIN_EMAIL),
+  normalizeEmail(ADMIN_EMAIL_2)
+];
 
-
-        if (
-          loggedEmail !==
-          allowedEmail
-        ) {
+if (
+  !allowedEmails.includes(
+    loggedEmail
+  )
+) {
 
           await signOut(
             auth
@@ -661,14 +661,14 @@ onAuthStateChanged(
   auth,
   async user => {
 
-    const isAdmin =
-      !!user?.email &&
-      normalizeEmail(
-        user.email
-      ) ===
-      normalizeEmail(
-        ADMIN_EMAIL
-      );
+const isAdmin =
+  !!user?.email &&
+  [
+    normalizeEmail(ADMIN_EMAIL),
+    normalizeEmail(ADMIN_EMAIL_2)
+  ].includes(
+    normalizeEmail(user.email)
+  );
 
 
     $('loginCard')
