@@ -10,4 +10,4 @@ export const firebaseConfig = {
 };
 // Email allowed to use the admin screen. Must match Firestore rules.
 export const ADMIN_EMAIL = "nitzangoldberg1@gmail.com";
-export const ADMIN_EMAIL_2 = "assaf_sidi@gmail.com";
+export const ADMIN_EMAIL_2 = "asaf_sidi@gmail.com";
