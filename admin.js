@@ -23,9 +23,9 @@ import {
 
 import {
   firebaseConfig,
-  ADMIN_EMAIL
+  ADMIN_EMAIL,
+  ADMIN_EMAIL_2
 } from './firebase-config.js';
-
 
 const $ = id => document.getElementById(id);
 
