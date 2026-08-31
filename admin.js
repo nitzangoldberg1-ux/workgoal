@@ -2028,7 +2028,22 @@ async function addGoal() {
         )
     }
   );
+if (scorer.permanentPlayerId) {
 
+  batch.update(
+    doc(
+      db,
+      'players',
+      scorer.permanentPlayerId
+    ),
+    {
+      goals:
+        increment(
+          1
+        )
+    }
+  );
+}
 
   batch.update(
     doc(
@@ -2045,7 +2060,27 @@ async function addGoal() {
         )
     }
   );
+const scorer =
+  players.find(
+    p => p.id === event.scorerId
+  );
 
+if (scorer?.permanentPlayerId) {
+
+  batch.update(
+    doc(
+      db,
+      'players',
+      scorer.permanentPlayerId
+    ),
+    {
+      goals:
+        increment(
+          -1
+        )
+    }
+  );
+}
 
   if (
     assister
@@ -2067,7 +2102,22 @@ async function addGoal() {
       }
     );
   }
+if (assister?.permanentPlayerId) {
 
+  batch.update(
+    doc(
+      db,
+      'players',
+      assister.permanentPlayerId
+    ),
+    {
+      assists:
+        increment(
+          1
+        )
+    }
+  );
+}
 
   const remaining =
     timerSecondsLeft();
@@ -2196,58 +2246,96 @@ async function undoGoal(
   );
 
 
+if (
+  scorer
+) {
+
+  batch.update(
+    doc(
+      db,
+      'games',
+      GAME,
+      'players',
+      scorer.id
+    ),
+    {
+      goals:
+        Math.max(
+          0,
+          Number(
+            scorer.goals ||
+            0
+          ) -
+          1
+        )
+    }
+  );
+
   if (
-    scorer
+    scorer.permanentPlayerId
   ) {
 
     batch.update(
       doc(
         db,
-        'games',
-        GAME,
         'players',
-        scorer.id
+        scorer.permanentPlayerId
       ),
       {
         goals:
-          Math.max(
-            0,
-            Number(
-              scorer.goals ||
-              0
-            ) -
-            1
+          increment(
+            -1
           )
       }
     );
   }
+}
 
+
+if (
+  assister
+) {
+
+  batch.update(
+    doc(
+      db,
+      'games',
+      GAME,
+      'players',
+      assister.id
+    ),
+    {
+      assists:
+        Math.max(
+          0,
+          Number(
+            assister.assists ||
+            0
+          ) -
+          1
+        )
+    }
+  );
 
   if (
-    assister
+    assister.permanentPlayerId
   ) {
 
     batch.update(
       doc(
         db,
-        'games',
-        GAME,
         'players',
-        assister.id
+        assister.permanentPlayerId
       ),
       {
         assists:
-          Math.max(
-            0,
-            Number(
-              assister.assists ||
-              0
-            ) -
-            1
+          increment(
+            -1
           )
       }
     );
   }
+}
 
 
   batch.delete(
