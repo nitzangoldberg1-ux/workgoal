@@ -309,9 +309,14 @@ const ref =
       'players'
     ),
     {
-permanentPlayer.id
-permanentPlayer.name
-permanentPlayer.nameLower,
+permanentPlayerId:
+  playerProfile.id,
+
+name:
+  playerProfile.name,
+
+nameLower:
+  playerProfile.nameLower,
 
       team:
         null,
