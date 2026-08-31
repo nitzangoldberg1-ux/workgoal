@@ -1,6 +1,18 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js';
 import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js';
-import { getFirestore, collection, addDoc, getDocs, query, where, onSnapshot, doc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js';
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  getDoc,
+  setDoc,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  serverTimestamp
+} from 'https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
 
 const $ = id => document.getElementById(id);
@@ -18,6 +30,8 @@ await signInAnonymously(auth);
 
 const GAME = 'current';
 let meId = localStorage.getItem('workgoalPlayerId') || '';
+let permanentPlayerId =
+  localStorage.getItem('workgoalPermanentPlayerId') || '';
 let game = { teamCount: 4, playersPerTeam: 5, status: 'registration', activeHomeTeam: 1, activeAwayTeam: 2, scores: {} };
 let players = [];
 let timerInterval = null;
@@ -31,6 +45,123 @@ function formatTimer(total) { total = Math.max(0, Math.floor(Number(total) || 0)
 function score(team) { return Number(game.scores?.[String(team)] ?? game.scores?.[team] ?? 0); }
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[ch])); }
 
+async function getOrCreatePermanentPlayer(name) {
+
+  const normalizedName =
+    name.trim().toLowerCase();
+
+  // אם כבר שמרנו את מזהה השחקן בדפדפן
+  if (permanentPlayerId) {
+
+    const existingRef =
+      doc(
+        db,
+        'players',
+        permanentPlayerId
+      );
+
+    const existingSnap =
+      await getDoc(existingRef);
+
+    if (existingSnap.exists()) {
+      return {
+        id: existingSnap.id,
+        ...existingSnap.data()
+      };
+    }
+  }
+
+  // מחפש שחקן קיים לפי השם
+  const existingPlayers =
+    await getDocs(
+      query(
+        collection(db, 'players'),
+        where(
+          'nameLower',
+          '==',
+          normalizedName
+        )
+      )
+    );
+
+  if (!existingPlayers.empty) {
+
+    const existing =
+      existingPlayers.docs[0];
+
+    permanentPlayerId =
+      existing.id;
+
+    localStorage.setItem(
+      'workgoalPermanentPlayerId',
+      permanentPlayerId
+    );
+
+    return {
+      id: existing.id,
+      ...existing.data()
+    };
+  }
+
+  // אין שחקן כזה - יוצרים פרופיל חדש
+  const newPlayerRef =
+    await addDoc(
+      collection(db, 'players'),
+      {
+        name,
+        nameLower:
+          normalizedName,
+
+        goals:
+          0,
+
+        assists:
+          0,
+
+        games:
+          0,
+
+        wins:
+          0,
+
+        mvp:
+          0,
+
+        createdAt:
+          serverTimestamp()
+      }
+    );
+
+  permanentPlayerId =
+    newPlayerRef.id;
+
+  localStorage.setItem(
+    'workgoalPermanentPlayerId',
+    permanentPlayerId
+  );
+
+  return {
+    id: newPlayerRef.id,
+    name,
+    nameLower:
+      normalizedName,
+
+    goals:
+      0,
+
+    assists:
+      0,
+
+    games:
+      0,
+
+    wins:
+      0,
+
+    mvp:
+      0
+  };
+}
 function render() {
   $('count').textContent = `${players.length}/${target()}`;
   $('regStatus').textContent = game.status === 'registration' ? 'ההרשמה פתוחה' : game.status === 'revealed' ? 'הקבוצות נחשפו' : 'המשחק הסתיים';
@@ -76,7 +207,51 @@ $('joinBtn').addEventListener('click', async () => {
   if (players.length >= target()) { $('joinMsg').textContent = 'ההרשמה מלאה.'; return; }
   const dup = await getDocs(query(collection(db, 'games', GAME, 'players'), where('nameLower', '==', name.toLowerCase())));
   if (!dup.empty) { $('joinMsg').textContent = 'השם הזה כבר רשום.'; return; }
-  const ref = await addDoc(collection(db, 'games', GAME, 'players'), { name, nameLower: name.toLowerCase(), team: null, goals: 0, assists: 0, mvp: 0, games: 0, wins: 0, createdAt: serverTimestamp() });
+ const permanentPlayer =
+  await getOrCreatePermanentPlayer(
+    name
+  );
+
+const ref =
+  await addDoc(
+    collection(
+      db,
+      'games',
+      GAME,
+      'players'
+    ),
+    {
+      permanentPlayerId:
+        permanentPlayer.id,
+
+      name:
+        permanentPlayer.name,
+
+      nameLower:
+        permanentPlayer.nameLower,
+
+      team:
+        null,
+
+      goals:
+        0,
+
+      assists:
+        0,
+
+      mvp:
+        0,
+
+      games:
+        0,
+
+      wins:
+        0,
+
+      createdAt:
+        serverTimestamp()
+    }
+  );
   meId = ref.id;
   localStorage.setItem('workgoalPlayerId', meId);
   $('joinMsg').textContent = 'נרשמת בהצלחה ✅';
