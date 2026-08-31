@@ -2060,27 +2060,7 @@ if (scorer.permanentPlayerId) {
         )
     }
   );
-const scorer =
-  players.find(
-    p => p.id === event.scorerId
-  );
 
-if (scorer?.permanentPlayerId) {
-
-  batch.update(
-    doc(
-      db,
-      'players',
-      scorer.permanentPlayerId
-    ),
-    {
-      goals:
-        increment(
-          -1
-        )
-    }
-  );
-}
 
   if (
     assister
