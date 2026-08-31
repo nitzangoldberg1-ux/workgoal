@@ -34,6 +34,8 @@ let permanentPlayerId =
   localStorage.getItem('workgoalPermanentPlayerId') || '';
 let game = { teamCount: 4, playersPerTeam: 5, status: 'registration', activeHomeTeam: 1, activeAwayTeam: 2, scores: {} };
 let players = [];
+let permanentPlayer = null;
+let unsubscribePermanentPlayer = null;
 let timerInterval = null;
 
 function target() { return Number(game.teamCount || 4) * Number(game.playersPerTeam || 5); }
@@ -162,14 +164,64 @@ async function getOrCreatePermanentPlayer(name) {
       0
   };
 }
+function watchPermanentPlayer(playerId) {
+
+  if (unsubscribePermanentPlayer) {
+    unsubscribePermanentPlayer();
+    unsubscribePermanentPlayer = null;
+  }
+
+  if (!playerId) {
+    permanentPlayer = null;
+    render();
+    return;
+  }
+
+  unsubscribePermanentPlayer =
+    onSnapshot(
+      doc(
+        db,
+        'players',
+        playerId
+      ),
+
+      snapshot => {
+
+        if (snapshot.exists()) {
+
+          permanentPlayer = {
+            id: snapshot.id,
+            ...snapshot.data()
+          };
+
+        } else {
+
+          permanentPlayer = null;
+        }
+
+        render();
+      },
+
+      error => {
+        console.error(
+          'Permanent player listener error:',
+          error
+        );
+      }
+    );
+}
 function render() {
   $('count').textContent = `${players.length}/${target()}`;
   $('regStatus').textContent = game.status === 'registration' ? 'ההרשמה פתוחה' : game.status === 'revealed' ? 'הקבוצות נחשפו' : 'המשחק הסתיים';
   const me = players.find(p => p.id === meId);
+  const profile = permanentPlayer || me;
   const revealed = game.status === 'revealed' || game.status === 'finished';
   $('waiting').classList.toggle('hidden', revealed && !!me);
   $('myTeamCard').classList.toggle('hidden', !(revealed && me));
-  $('profileCard').classList.toggle('hidden', !me);
+ $('profileCard').classList.toggle(
+  'hidden',
+  !profile
+);
   $('liveCard').classList.toggle('hidden', !revealed);
 
   const home = Number(game.activeHomeTeam || 1), away = Number(game.activeAwayTeam || 2);
@@ -179,24 +231,60 @@ function render() {
   $('playerAwayScore').textContent = score(away);
   $('playerTimer').textContent = formatTimer(timerSecondsLeft());
 
+  if (profile) {
+
+  $('profileName').textContent =
+    profile.name || '';
+
+  $('profileTeam').textContent =
+    me?.team
+      ? `קבוצה ${me.team}`
+      : me
+        ? 'ממתין לשיבוץ'
+        : 'לא רשום למחזור הנוכחי';
+
+  $('games').textContent =
+    profile.games || 0;
+
+  $('goals').textContent =
+    profile.goals || 0;
+
+  $('assists').textContent =
+    profile.assists || 0;
+
+  $('mvp').textContent =
+    profile.mvp || 0;
+
+  $('wins').textContent =
+    profile.wins || 0;
+
+  const profileGames =
+    Number(profile.games || 0);
+
+  $('winRate').textContent =
+    profileGames
+      ? Math.round(
+          Number(profile.wins || 0) /
+          profileGames *
+          100
+        ) + '%'
+      : '0%';
+}
   if (me) {
-    $('profileName').textContent = me.name;
-    $('profileTeam').textContent = me.team ? `קבוצה ${me.team}` : 'ממתין לשיבוץ';
-    $('games').textContent = me.games || 0;
-    $('goals').textContent = me.goals || 0;
-    $('assists').textContent = me.assists || 0;
-    $('mvp').textContent = me.mvp || 0;
-    $('wins').textContent = me.wins || 0;
-    const g = me.games || 0;
-    $('winRate').textContent = g ? Math.round((me.wins || 0) / g * 100) + '%' : '0%';
+
     if (revealed) {
       const mates = players.filter(p => Number(p.team) === Number(me.team));
       $('myTeam').innerHTML = `<div class="team"><h3>קבוצה ${me.team}</h3>${mates.map(p => `<div class="member">${escapeHtml(p.name)}${p.id === me.id ? ' ⭐' : ''}</div>`).join('')}</div>`;
     }
   }
 }
-
+if (permanentPlayerId) {
+  watchPermanentPlayer(
+    permanentPlayerId
+  );
+}
 onSnapshot(doc(db, 'games', GAME), snap => { if (snap.exists()) { game = { ...game, ...snap.data() }; render(); } });
+
 onSnapshot(collection(db, 'games', GAME, 'players'), snap => { players = snap.docs.map(d => ({ id: d.id, ...d.data() })); render(); });
 
 $('joinBtn').addEventListener('click', async () => {
@@ -207,7 +295,7 @@ $('joinBtn').addEventListener('click', async () => {
   if (players.length >= target()) { $('joinMsg').textContent = 'ההרשמה מלאה.'; return; }
   const dup = await getDocs(query(collection(db, 'games', GAME, 'players'), where('nameLower', '==', name.toLowerCase())));
   if (!dup.empty) { $('joinMsg').textContent = 'השם הזה כבר רשום.'; return; }
- const permanentPlayer =
+const playerProfile =
   await getOrCreatePermanentPlayer(
     name
   );
@@ -221,14 +309,9 @@ const ref =
       'players'
     ),
     {
-      permanentPlayerId:
-        permanentPlayer.id,
-
-      name:
-        permanentPlayer.name,
-
-      nameLower:
-        permanentPlayer.nameLower,
+permanentPlayer.id
+permanentPlayer.name
+permanentPlayer.nameLower,
 
       team:
         null,
@@ -252,6 +335,9 @@ const ref =
         serverTimestamp()
     }
   );
+watchPermanentPlayer(
+  playerProfile.id
+);
   meId = ref.id;
   localStorage.setItem('workgoalPlayerId', meId);
   $('joinMsg').textContent = 'נרשמת בהצלחה ✅';
